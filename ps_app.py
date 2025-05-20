@@ -277,6 +277,10 @@ def main():
                             missing_fields = main_result["missing_fields"]
                             urls_for_deep = main_result["urls_for_deep"]
                             
+                            # 调试输出
+                            print(f"DEBUG: missing_fields={missing_fields}")
+                            print(f"DEBUG: urls_for_deep={urls_for_deep}")
+                            
                             # 确认是否有缺失项和补充URL
                             has_missing_items = bool(missing_fields) and bool(urls_for_deep)
                             
@@ -285,6 +289,12 @@ def main():
                                 st.success("Agent 1.1 初步信息收集已完成")
                                 st.markdown("## 初步信息收集报告")
                                 st.markdown(report)
+                                
+                                # 显示原始结果用于调试
+                                with st.expander("调试信息", expanded=False):
+                                    st.write("缺失字段列表:", missing_fields)
+                                    st.write("补充URL列表:", urls_for_deep)
+                                    st.write(f"has_missing_items判断结果: {has_missing_items}")
                                 
                                 # 如果有缺失项，展示确认按钮
                                 if has_missing_items:
@@ -315,9 +325,70 @@ def main():
                                             }
                                             st.session_state.current_step = 2
                                             st.rerun()
+                                # 未发现缺失项
                                 else:
-                                    # 没有缺失项，提供继续按钮
-                                    st.success("报告已完整，无需补充信息")
+                                    # 尝试检查报告中是否包含"[缺失，需补全]"文本
+                                    if "[缺失，需补全]" in report:
+                                        st.warning("### 检测到报告中有缺失内容标记")
+                                        st.markdown("检测到报告中包含`[缺失，需补全]`标记，但未能正确提取缺失字段列表。")
+                                        
+                                        # 尝试提取报告中的section titles
+                                        common_sections = ["项目概览", "申请要求", "申请流程", "课程设置", "相关资源"]
+                                        detected_missing = []
+                                        
+                                        for section in common_sections:
+                                            if f"## {section}\n[缺失，需补全]" in report:
+                                                detected_missing.append(section)
+                                        
+                                        if detected_missing:
+                                            st.markdown(f"从报告中检测到的缺失字段: **{', '.join(detected_missing)}**")
+                                            
+                                            # 强制设置为缺失项以便继续
+                                            missing_fields = detected_missing
+                                            
+                                            # 提供两个按钮：继续Agent 1.2或跳过
+                                            st.write("### 是否需要补充缺失信息？")
+                                            col1, col2, col3 = st.columns([2, 1, 1])
+                                            with col2:
+                                                if st.button("跳过补充信息", key="skip_agent2_recover", use_container_width=True):
+                                                    # 直接使用Agent 1.1的报告
+                                                    st.session_state.university_info_report = report
+                                                    st.session_state.current_step = 3
+                                                    st.rerun()
+                                            
+                                            with col3:
+                                                if st.button("补充缺失信息", key="run_agent2_recover", use_container_width=True):
+                                                    if not urls_for_deep and detected_missing:
+                                                        # 如果没有URL但检测到缺失项，强制重新搜索补充URL
+                                                        st.info("没有找到补充URL，正在尝试搜索...")
+                                                        # TODO: 这里可以添加搜索补充URL的代码
+                                                        
+                                                        # 临时生成一些默认的URL
+                                                        default_urls = [f"https://www.google.com/search?q={university}+{major}+admission"]
+                                                        
+                                                        # 将Agent 1.1的结果存入session state，执行Agent 1.2
+                                                        st.session_state.agent1_result = {
+                                                            "report": report,
+                                                            "missing_fields": detected_missing,
+                                                            "urls_for_deep": default_urls
+                                                        }
+                                                        st.session_state.current_step = 2
+                                                        st.rerun()
+                                                    else:
+                                                        # 将Agent 1.1的结果存入session state，执行Agent 1.2
+                                                        st.session_state.agent1_result = {
+                                                            "report": report,
+                                                            "missing_fields": detected_missing,
+                                                            "urls_for_deep": urls_for_deep if urls_for_deep else default_urls
+                                                        }
+                                                        st.session_state.current_step = 2
+                                                        st.rerun()
+                                        else:
+                                            st.success("报告已完整，无需补充信息")
+                                    else:
+                                        # 真的完整
+                                        st.success("报告已完整，无需补充信息")
+                                        
                                     if st.button("继续", key="continue_complete", use_container_width=True):
                                         st.session_state.university_info_report = report
                                         st.session_state.current_step = 3
