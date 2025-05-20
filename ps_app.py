@@ -73,6 +73,8 @@ if "agent1_result" not in st.session_state:
     st.session_state.agent1_result = None
 if "waiting_for_confirmation" not in st.session_state:
     st.session_state.waiting_for_confirmation = False
+if "agent2_started" not in st.session_state:
+    st.session_state.agent2_started = False
 
 # 支持的模型列表（每个Agent的可选模型）
 INFO_COLLECTOR_MODELS = [
@@ -338,51 +340,93 @@ def main():
             missing_fields = st.session_state.agent1_result.get("missing_fields", [])
             urls_for_deep = st.session_state.agent1_result.get("urls_for_deep", [])
             
-            # 显示基本信息
-            st.info(f"已找到 {len(missing_fields)} 个缺失字段和 {len(urls_for_deep)} 个需要补充的URL")
+            # 初始化agent2_started如果不存在
+            if "agent2_started" not in st.session_state:
+                st.session_state.agent2_started = False
             
-            # 创建新的容器
-            agent2_container = st.container()
-            with agent2_container:
-                st.subheader(f"Agent 1.2：{st.session_state.university} {st.session_state.major} 补充信息收集中")
+            # 第一步：显示确认界面
+            if not st.session_state.agent2_started:
+                st.info(f"已找到 {len(missing_fields)} 个缺失字段需要补充")
                 
-                # 创建进度条
-                progress_container = st.container()
-                with progress_container:
-                    st.write("### 信息收集进度")
-                    agent2_progress = st.progress(10, "Agent 1.2 (补充信息收集)：初始化中...")
+                # 显示Agent 1.1的结果
+                st.markdown("## Agent 1.1 初步报告")
+                st.markdown(report)
                 
-                # 初始化Agent 1.2
-                info_collector_deep = PSInfoCollectorDeep(
-                    model_name=st.session_state.info_collector_model,
-                    max_urls_to_process=st.session_state.max_process_urls
-                )
+                # 显示缺失字段和需要搜索的URL
+                st.warning("### 需要补充的信息项")
+                st.markdown(f"缺失字段: **{', '.join(missing_fields)}**")
                 
-                # 创建更新进度条的回调函数
-                def update_agent2_progress(percent, status):
+                with st.expander("将搜索的补充页面", expanded=True):
+                    for i, url in enumerate(urls_for_deep[:st.session_state.max_process_urls]):
+                        st.markdown(f"{i+1}. [{url}]({url})")
+                
+                # 确认按钮
+                st.write("### 准备开始补充信息收集")
+                col1, col2, col3 = st.columns([2, 1, 1])
+                
+                with col2:
+                    if st.button("返回上一步", key="back_to_step1"):
+                        st.session_state.current_step = 1
+                        st.session_state.agent1_result = None
+                        st.session_state.agent2_started = False
+                        st.rerun()
+                
+                with col3:
+                    if st.button("开始补充信息", key="start_agent2", use_container_width=True):
+                        st.session_state.agent2_started = True
+                        st.rerun()
+            
+            # 第二步：执行Agent 1.2
+            else:
+                # 创建新的容器
+                agent2_container = st.container()
+                with agent2_container:
+                    st.subheader(f"正在补充 {st.session_state.university} {st.session_state.major} 的缺失信息")
+                    
+                    # 创建进度条
+                    progress_container = st.container()
                     with progress_container:
-                        agent2_progress.progress(percent, f"Agent 1.2 (补充信息收集)：{status}")
-                
-                # 执行Agent 1.2
-                final_report = asyncio.run(info_collector_deep.complete_missing_info(
-                    main_report=report,
-                    missing_fields=missing_fields,
-                    urls_for_deep=urls_for_deep,
-                    university=st.session_state.university,
-                    major=st.session_state.major,
-                    custom_requirements="",
-                    progress_callback=update_agent2_progress
-                ))
-                
-                with progress_container:
-                    agent2_progress.progress(100, "Agent 1.2 (补充信息收集)：已完成")
-                
-                # 存储最终报告并移至下一步
-                st.session_state.university_info_report = final_report
-                st.success("Agent 1.2 已完成补充信息收集")
-                if st.button("继续下一步", key="continue_after_agent2", use_container_width=True):
-                    st.session_state.current_step = 3
-                    st.rerun()
+                        st.write("### 信息收集进度")
+                        agent2_progress = st.progress(10, "Agent 1.2 (补充信息收集)：初始化中...")
+                    
+                    # 初始化Agent 1.2
+                    info_collector_deep = PSInfoCollectorDeep(
+                        model_name=st.session_state.info_collector_model,
+                        max_urls_to_process=st.session_state.max_process_urls
+                    )
+                    
+                    # 创建更新进度条的回调函数
+                    def update_agent2_progress(percent, status):
+                        with progress_container:
+                            agent2_progress.progress(percent, f"Agent 1.2 (补充信息收集)：{status}")
+                    
+                    # 执行Agent 1.2
+                    final_report = asyncio.run(info_collector_deep.complete_missing_info(
+                        main_report=report,
+                        missing_fields=missing_fields,
+                        urls_for_deep=urls_for_deep,
+                        university=st.session_state.university,
+                        major=st.session_state.major,
+                        custom_requirements="",
+                        progress_callback=update_agent2_progress
+                    ))
+                    
+                    with progress_container:
+                        agent2_progress.progress(100, "Agent 1.2 (补充信息收集)：已完成")
+                    
+                    # 存储最终报告并移至下一步
+                    st.session_state.university_info_report = final_report
+                    st.success("Agent 1.2 已完成补充信息收集")
+                    
+                    # 展示最终报告
+                    st.markdown("## 最终完整报告")
+                    st.markdown(final_report)
+                    
+                    if st.button("继续下一步", key="continue_after_agent2", use_container_width=True):
+                        # 清除状态，进入步骤3
+                        st.session_state.agent2_started = False
+                        st.session_state.current_step = 3
+                        st.rerun()
         
         # 步骤3：上传支持文件和PS初稿，生成分析报告
         elif st.session_state.current_step == 3:
