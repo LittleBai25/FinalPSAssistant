@@ -32,7 +32,47 @@ st.set_page_config(
     layout="wide"
 )
 
-# Initialize session stateif "university_info_report" not in st.session_state:    st.session_state.university_info_report = Noneif "supporting_file_analysis" not in st.session_state:    st.session_state.supporting_file_analysis = Noneif "ps_analysis_strategy" not in st.session_state:    st.session_state.ps_analysis_strategy = Noneif "rewritten_ps" not in st.session_state:    st.session_state.rewritten_ps = Noneif "ps_content" not in st.session_state:    st.session_state.ps_content = Noneif "university" not in st.session_state:    st.session_state.university = ""if "major" not in st.session_state:    st.session_state.major = ""if "custom_requirements" not in st.session_state:    st.session_state.custom_requirements = ""if "supporting_files" not in st.session_state:    st.session_state.supporting_files = Noneif "ps_file" not in st.session_state:    st.session_state.ps_file = Noneif "current_step" not in st.session_state:    st.session_state.current_step = 1if "info_collector_model" not in st.session_state:    st.session_state.info_collector_model = "google/gemini-2.0-flash-001"if "supporting_analyzer_model" not in st.session_state:    st.session_state.supporting_analyzer_model = "qwen/qwen-max"if "ps_analyzer_model" not in st.session_state:    st.session_state.ps_analyzer_model = "qwen/qwen-max"if "ps_rewriter_model" not in st.session_state:    st.session_state.ps_rewriter_model = "anthropic/claude-3-7-sonnet"if "langsmith_initialized" not in st.session_state:    st.session_state.langsmith_initialized = False# Add variables for our new workflowif "agent1_completed" not in st.session_state:    st.session_state.agent1_completed = Falseif "agent1_result" not in st.session_state:    st.session_state.agent1_result = Noneif "waiting_for_confirmation" not in st.session_state:    st.session_state.waiting_for_confirmation = False
+# Initialize session state
+if "university_info_report" not in st.session_state:
+    st.session_state.university_info_report = None
+if "supporting_file_analysis" not in st.session_state:
+    st.session_state.supporting_file_analysis = None
+if "ps_analysis_strategy" not in st.session_state:
+    st.session_state.ps_analysis_strategy = None
+if "rewritten_ps" not in st.session_state:
+    st.session_state.rewritten_ps = None
+if "ps_content" not in st.session_state:
+    st.session_state.ps_content = None
+if "university" not in st.session_state:
+    st.session_state.university = ""
+if "major" not in st.session_state:
+    st.session_state.major = ""
+if "custom_requirements" not in st.session_state:
+    st.session_state.custom_requirements = ""
+if "supporting_files" not in st.session_state:
+    st.session_state.supporting_files = None
+if "ps_file" not in st.session_state:
+    st.session_state.ps_file = None
+if "current_step" not in st.session_state:
+    st.session_state.current_step = 1
+if "info_collector_model" not in st.session_state:
+    st.session_state.info_collector_model = "google/gemini-2.0-flash-001"
+if "supporting_analyzer_model" not in st.session_state:
+    st.session_state.supporting_analyzer_model = "qwen/qwen-max"
+if "ps_analyzer_model" not in st.session_state:
+    st.session_state.ps_analyzer_model = "qwen/qwen-max"
+if "ps_rewriter_model" not in st.session_state:
+    st.session_state.ps_rewriter_model = "anthropic/claude-3-7-sonnet"
+if "langsmith_initialized" not in st.session_state:
+    st.session_state.langsmith_initialized = False
+
+# Add variables for our new workflow
+if "agent1_completed" not in st.session_state:
+    st.session_state.agent1_completed = False
+if "agent1_result" not in st.session_state:
+    st.session_state.agent1_result = None
+if "waiting_for_confirmation" not in st.session_state:
+    st.session_state.waiting_for_confirmation = False
 
 # 支持的模型列表（每个Agent的可选模型）
 INFO_COLLECTOR_MODELS = [
