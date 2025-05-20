@@ -276,7 +276,7 @@ def main():
                             urls_for_deep = main_result["urls_for_deep"]
                             
                             # 确认是否有缺失项和补充URL
-                            has_missing_items = missing_fields and urls_for_deep
+                            has_missing_items = bool(missing_fields) and bool(urls_for_deep)
                             
                             # 显示报告
                             with collection_container:
@@ -289,11 +289,12 @@ def main():
                                     st.warning("### 报告中存在以下缺失项")
                                     st.markdown(f"缺失字段: **{', '.join(missing_fields)}**")
                                     
-                                    with st.expander("需要搜索的补充页面", expanded=False):
+                                    with st.expander("需要搜索的补充页面", expanded=True):
                                         for i, url in enumerate(urls_for_deep[:st.session_state.max_process_urls]):
                                             st.markdown(f"{i+1}. [{url}]({url})")
                                     
                                     # 提供两个按钮：继续Agent 1.2或跳过
+                                    st.write("### 是否需要补充缺失信息？")
                                     col1, col2, col3 = st.columns([2, 1, 1])
                                     with col2:
                                         if st.button("跳过补充信息", key="skip_agent2", use_container_width=True):
@@ -322,7 +323,10 @@ def main():
         
         # 步骤2：执行Agent 1.2进行补充信息收集
         elif st.session_state.current_step == 2:
-            if "agent1_result" not in st.session_state:
+            st.subheader("步骤2：补充信息收集")
+            
+            # 检查Agent 1.1结果是否存在
+            if "agent1_result" not in st.session_state or not st.session_state.agent1_result:
                 st.error("错误：未找到Agent 1.1的结果。请重新开始。")
                 if st.button("重新开始", key="restart_step2", use_container_width=True):
                     st.session_state.current_step = 1
@@ -333,6 +337,9 @@ def main():
             report = st.session_state.agent1_result.get("report", "")
             missing_fields = st.session_state.agent1_result.get("missing_fields", [])
             urls_for_deep = st.session_state.agent1_result.get("urls_for_deep", [])
+            
+            # 显示基本信息
+            st.info(f"已找到 {len(missing_fields)} 个缺失字段和 {len(urls_for_deep)} 个需要补充的URL")
             
             # 创建新的容器
             agent2_container = st.container()
@@ -373,7 +380,7 @@ def main():
                 # 存储最终报告并移至下一步
                 st.session_state.university_info_report = final_report
                 st.success("Agent 1.2 已完成补充信息收集")
-                if st.button("继续", key="continue_after_agent2", use_container_width=False):
+                if st.button("继续下一步", key="continue_after_agent2", use_container_width=True):
                     st.session_state.current_step = 3
                     st.rerun()
         
