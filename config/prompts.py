@@ -1,8 +1,9 @@
 import os
 import json
+import streamlit as st
 from typing import Dict, Any
 
-# Path to prompts configuration file
+# Path to prompts configuration file (still used as fallback/initial values)
 PROMPTS_FILE = os.path.join(os.path.dirname(__file__), "prompts.json")
 
 # Default prompts
@@ -132,11 +133,11 @@ Focus on programs where the student's profile gives them a reasonable chance of 
 
 对于在主网页中找不到的信息，你需要明确标记为"[缺失，需补全]"，并生成相应的补充URL列表，为Agent 1.2提供进一步搜索的方向。""",
         
-        "output": """请生成一份结构清晰、格式规范的初步信息收集报告，使用以下严格的markdown格式：
+        "output": """你需要生成两部分输出：
 
+1. 一份初步信息收集报告，格式如下：
 ```
-REPORT:
-# {大学名} {专业名}专业信息收集报告
+# [大学名称] [专业名称]专业信息收集报告
 
 ## 项目概览
 [提取的内容或"[缺失，需补全]"]
@@ -154,15 +155,19 @@ REPORT:
 [提取的内容或"[缺失，需补全]"]
 
 ## 信息来源
-主网页：[URL]
-
-MISSING_FIELDS:
-["项目概览", "申请要求", ...] // 只列出缺失的字段，便于1.2进行深度补全
+[主网页链接]
 ```
 
-对于每个部分，如果在主网页中能找到信息，请提取并整理；如果找不到，必须使用准确的标记"[缺失，需补全]"。
+2. 一个清晰标记哪些信息部分是缺失的JSON列表，如：
+```
+["项目概览", "申请要求", ...]
+```
 
-确保报告内容准确、客观、专业，不添加主观评价或虚构内容。这个严格的格式设计便于Agent 1.2进行后续处理。"""
+对于在网页中能找到的信息，直接提取并整理到报告中对应部分。
+对于网页中缺失的信息，在对应部分加上"[缺失，需补全]"标记，并将该部分添加到缺失字段列表中。
+
+如果报告中有缺失部分，请在末尾添加一行：
+**以下部分信息缺失，建议补全：[缺失部分列表]**"""
     },
     
     "ps_info_collector_deep": {
@@ -294,30 +299,51 @@ CONTENT:
 
 def load_prompts() -> Dict[str, Any]:
     """
-    Load prompts from configuration file, or create default if not exists.
+    Load prompts from Streamlit session state, or from configuration file if not in session state,
+    or create default if neither exists.
     
     Returns:
         Dictionary containing prompt configurations
     """
+    # First, check if prompts exist in session state
+    if 'prompts' in st.session_state:
+        return st.session_state.prompts
+    
+    # If not in session state, try to load from file
     try:
         if os.path.exists(PROMPTS_FILE):
             with open(PROMPTS_FILE, "r") as f:
-                return json.load(f)
+                file_prompts = json.load(f)
+                # Store in session state for future use
+                st.session_state.prompts = file_prompts
+                return file_prompts
         else:
-            # Create default prompts file
+            # Create default prompts and store in session state
+            st.session_state.prompts = DEFAULT_PROMPTS
+            # Also save to file as a backup
             save_prompts(DEFAULT_PROMPTS)
             return DEFAULT_PROMPTS
     except Exception as e:
         print(f"Error loading prompts: {e}")
+        # Store defaults in session state
+        st.session_state.prompts = DEFAULT_PROMPTS
         return DEFAULT_PROMPTS
 
 def save_prompts(prompts: Dict[str, Any]) -> None:
     """
-    Save prompts to configuration file.
+    Save prompts to Streamlit session state and optionally to file.
     
     Args:
         prompts: Dictionary containing prompt configurations
     """
-    os.makedirs(os.path.dirname(PROMPTS_FILE), exist_ok=True)
-    with open(PROMPTS_FILE, "w") as f:
-        json.dump(prompts, f, indent=4) 
+    # Store in session state
+    st.session_state.prompts = prompts
+    
+    # Also try to save to file as a backup (may not work in Streamlit Cloud)
+    try:
+        os.makedirs(os.path.dirname(PROMPTS_FILE), exist_ok=True)
+        with open(PROMPTS_FILE, "w") as f:
+            json.dump(prompts, f, indent=4)
+    except Exception as e:
+        print(f"Note: Could not save prompts to file (expected in Streamlit Cloud): {e}")
+        pass  # Silent fail on Streamlit Cloud where file saving is not allowed 
